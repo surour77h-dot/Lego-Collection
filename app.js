@@ -46,7 +46,121 @@ function render(){const p=pages.find(x=>x.key===current); $('#pageTitle').textCo
 function renderKPIs(rows){const pieces=rows.reduce((a,r)=>a+num(val(r,'PCs')),0); const buy=rows.reduce((a,r)=>a+num(val(r,'price buy')),0); const themes=new Set(rows.map(r=>fmt(val(r,'theme'))).filter(Boolean)); $('#kpis').innerHTML=`<div><b>${rows.length}</b><span>سجل</span></div><div><b>${pieces.toLocaleString()}</b><span>قطع</span></div><div><b>${buy.toFixed(1)}</b><span>شراء</span></div><div><b>${themes.size}</b><span>Theme</span></div>`;}
 function shortHeader(h){return {'price2 (total price)':'price2','total bill (total after discount)':'total bill','order date':'date','item Name':'item','price buy':'buy'}[h]||h;}
 function renderTable(rows,headers){const per=Number($('#rowsPerPage').value||20); const totalPages=Math.max(1,Math.ceil(rows.length/per)); if(page>totalPages)page=totalPages; const start=(page-1)*per, slice=rows.slice(start,start+per); $('#dataTable').innerHTML=`<thead><tr>${headers.map(h=>`<th title="${h}">${shortHeader(h)}</th>`).join('')}</tr></thead><tbody>${slice.map((r,i)=>`<tr data-row="${start+i}">${headers.map(h=>cell(h,val(r,h),r)).join('')}</tr>`).join('')}</tbody>`; document.querySelectorAll('tbody tr').forEach(tr=>tr.onclick=e=>{if(e.target.closest('a'))return; openDetails(rows[+tr.dataset.row],+tr.dataset.row)}); document.querySelectorAll('td a').forEach(a=>a.onclick=e=>e.stopPropagation()); $('#pageInfo').textContent=`${slice.length?start+1:0}-${Math.min(start+per,rows.length)} / ${rows.length}`; $('#pageNo').textContent=page; $('#prevPage').disabled=page<=1; $('#nextPage').disabled=page>=totalPages;}
-function cell(h,v,row){const n=h.toLowerCase(); if(n.includes('theme')&&!n.includes('subtheme')){const [bg,fg]=themeStyle(v);return `<td class="full-cell" style="background:${bg};color:${fg}">${themeLabel(v)}</td>`;} if(n==='store'){const [bg,fg]=storeStyle(v);return `<td class="full-cell" style="background:${bg};color:${fg}">${fmt(v)}</td>`;} if(n==='%'){const p=current==='Owned'?calcPercent(row):num(v); const pp=Math.round(Math.abs(p)<=1?p*100:p); let cls=pp>=100?'pct-full':pp>0?'pct-mid':''; return `<td class="pct ${cls}">${pp>0?pctText(p):fmt(v)}</td>`;} if(n==='url'&&fmt(v))return `<td class="url-cell"><a href="${safeUrl(v)}" target="_blank" rel="noopener noreferrer">🔗 Open</a></td>`; return `<td>${fmt(v)}</td>`;}
+function cell(h,v,row){
+
+  const key=norm(h);
+  const value=fmt(v);
+
+  // THEME
+  if(key==='theme'){
+    const [bg,fg]=themeStyle(value);
+
+    return `
+    <td
+      class="full-cell"
+      style="
+        background:${bg};
+        color:${fg};
+        font-weight:900;
+      "
+    >
+      ${themeLabel(value)}
+    </td>`;
+  }
+
+  // STORE
+  if(key==='store'){
+    const [bg,fg]=storeStyle(value);
+
+    return `
+    <td
+      class="full-cell"
+      style="
+        background:${bg};
+        color:${fg};
+        font-weight:900;
+      "
+    >
+      ${value}
+    </td>`;
+  }
+
+  // OPEN
+  if(key==='open' && value.toLowerCase()==='open'){
+    return `
+    <td
+      style="
+        background:#237841;
+        color:#fff;
+        font-weight:900;
+      "
+    >
+      Open
+    </td>`;
+  }
+
+  // %
+  if(key==='%'){
+
+    const p=current==='Owned'
+      ? calcPercent(row)
+      : num(value);
+
+    const pp=Math.round(
+      Math.abs(p)<=1 ? p*100 : p
+    );
+
+    if(pp>=100){
+      return `
+      <td
+        style="
+          background:#d9ead3;
+          color:#0b6b20;
+          font-weight:900;
+        "
+      >
+        ${pctText(p)}
+      </td>`;
+    }
+
+    if(pp>0){
+      return `
+      <td
+        style="
+          background:#fce4d6;
+          color:#b45f06;
+          font-weight:900;
+        "
+      >
+        ${pctText(p)}
+      </td>`;
+    }
+
+    return `<td>${value}</td>`;
+  }
+
+  // URL
+  if(key==='url'){
+
+    const item=itemNumber(row);
+
+    const link=
+    `https://www.bricklink.com/v2/catalog/catalogitem.page?S=${item}`;
+
+    return `
+    <td>
+      <a
+        href="${link}"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        🔗 Open
+      </a>
+    </td>`;
+  }
+
+  return `<td>${value}</td>`;
+}
 function safeUrl(v){const s=fmt(v); if(/^https?:\/\//i.test(s))return s; return s;}
 function bindEvents(){ $('#search').oninput=()=>{page=1;render();}; $('#addBtn').onclick=()=>openForm(null); $('#saveEntry').onclick=e=>{e.preventDefault();saveEntry();}; $('#fileInput').onchange=importExcel; $('#prevPage').onclick=()=>{if(page>1){page--;render();}}; $('#nextPage').onclick=()=>{page++;render();}; $('#rowsPerPage').onchange=()=>{page=1;render();}; $('#backToTable').onclick=()=>{$('#detailView').hidden=true;}; $('#menuBtn').onclick=()=>{$('#menuPanel').hidden=!$('#menuPanel').hidden;}; document.querySelectorAll('[data-menu-page]').forEach(b=>b.onclick=()=>switchPage(b.dataset.menuPage)); $('#exportDataBtn').onclick=exportData; $('#exportExcelBtn').onclick=exportExcel; $('#detailEditBtn').onclick=()=>{if(current==='Owned'&&selectedIndex!=null)openForm(selectedIndex);};}
 function field(h,row={}){let value= h==='%'&&row?calcPercent(row):val(row,h); return `<div class="field"><label>${h}</label><input name="${h}" ${h==='%'?'readonly':''} value="${fmt(value).replace(/"/g,'&quot;')}" /></div>`;}
