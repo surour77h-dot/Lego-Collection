@@ -1,134 +1,46 @@
-document.addEventListener('DOMContentLoaded',()=>{
-
-const table=document.getElementById('dataTable');
-const detail=document.getElementById('detailView');
-const detailGrid=document.getElementById('detailGrid');
-const setImage=document.getElementById('setImage');
-
-let rows=[];
-
 fetch('data.json')
 .then(r=>r.json())
 .then(data=>{
-rows=data;
-renderTable(rows);
-});
 
-function renderTable(data){
+const table=document.getElementById('dataTable');
 
-if(!data || !data.length) return;
+if(!data.length) return;
 
 const keys=Object.keys(data[0]);
 
 table.innerHTML='';
 
-const thead=document.createElement('thead');
-const hr=document.createElement('tr');
+let html='<thead><tr>';
 
 keys.forEach(k=>{
-const th=document.createElement('th');
-th.textContent=k;
-hr.appendChild(th);
+html+=`<th>${k}</th>`;
 });
 
-thead.appendChild(hr);
-table.appendChild(thead);
-
-const tbody=document.createElement('tbody');
+html+='</tr></thead><tbody>';
 
 data.forEach(row=>{
 
-const tr=document.createElement('tr');
+html+='<tr>';
 
 keys.forEach(k=>{
 
-const td=document.createElement('td');
+let v=row[k] ?? '';
 
-let value=row[k] ?? '';
-
-if(k.toLowerCase()==='open' && value==='Open'){
-td.className='open-cell';
-}
-
-if(k.toLowerCase().includes('theme')){
-td.classList.add('theme-cell');
-}
-
-if(k.toLowerCase().includes('store')){
-td.classList.add('store-cell');
-}
-
-if(k==='%'){
-const n=parseFloat(value)||0;
-
-if(n>=100){
-td.classList.add('pct-full');
-}
-else if(n>0){
-td.classList.add('pct-mid');
-}
-}
-
-td.textContent=value;
-
-tr.appendChild(td);
+html+=`<td>${v}</td>`;
 
 });
 
-tr.addEventListener('click',()=>showDetail(row));
-
-tbody.appendChild(tr);
+html+='</tr>';
 
 });
 
-table.appendChild(tbody);
-}
+html+='</tbody>';
 
-function showDetail(row){
+table.innerHTML=html;
 
-detail.hidden=false;
-
-detailGrid.innerHTML='';
-
-const item=row['item#'] || row['item #'] || '';
-
-setImage.src=`https://img.bricklink.com/ItemImage/SN/0/${item}-1.png`;
-
-Object.entries(row).forEach(([k,v])=>{
-
-const box=document.createElement('div');
-
-box.className='detail-box';
-
-if(k.toLowerCase()==='url'){
-
-box.innerHTML=`
-<b>${k}</b>
-<br>
-<button onclick="window.open('${v}','_blank')">
-Open
-</button>
-`;
-
-}else{
-
-box.innerHTML=`
-<b>${k}</b>
-<br>
-${v}
-`;
-
-}
-
-detailGrid.appendChild(box);
-
-});
-
-}
-
-document.getElementById('backToTable')
-?.addEventListener('click',()=>{
-detail.hidden=true;
-});
-
+})
+.catch(err=>{
+document.body.innerHTML=
+'<h1 style="padding:40px">APP ERROR</h1>';
+console.error(err);
 });
